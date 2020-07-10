@@ -33,18 +33,32 @@
 
   modelDropzone.addEventListener('drop', evt => {
     fileToUpload = evt.dataTransfer.files[0]
+
+    if (fileToUpload == null) {
+      modelFileName.innerText = ''
+      modelFileName.classList.remove('model__file__name--visible')
+      return
+    }
+
     modelFileName.innerText = `Arquivo selecionado: ${fileToUpload.name}`
     modelFileName.classList.add('model__file__name--visible')
   })
 
   modelFile.addEventListener('change', evt => {
     fileToUpload = evt.target.files[0]
+
+    if (fileToUpload == null) {
+      modelFileName.innerText = ''
+      modelFileName.classList.remove('model__file__name--visible')
+      return
+    }
+
     modelFileName.innerText = `Arquivo selecionado: ${fileToUpload.name}`
     modelFileName.classList.add('model__file__name--visible')
   })
 
   modelSend.addEventListener('click', async (evt) => {
-    const url = 'myurl'
+    const url = 'https://upload-file-dot-epidemicapp-280600.rj.r.appspot.com/upload_file'
     const formData = new FormData()
 
     const selectedFormat = Array.from(modelFormats.querySelectorAll('input[type=radio]'))
@@ -66,22 +80,24 @@
       modal.classList.add('modal--raise')
       modalLoader.classList.add('modal__loader--visible')
 
-      // const response = await httpRequest(url, 'POST', formData)
-      await ((ms) => new Promise( ( res, rej ) => setTimeout( res, ms ) ))(5000)
+      await httpRequest(url, 'POST', formData)
 
       modalLoader.classList.remove('modal__loader--visible')
       modalIcon.innerHTML = '&check;'
       modalIcon.classList.add('modal__icon--success')
       modalMessage.innerText = 'Tudo certo! Seu modelo já está sendo gerado. Aguarde nosso email!'
       modelEmail.value = ''
-      modelFile.files.length = 0
+      modelFile.value = ''
+      modelFileName.innerText = ''
       modelFileName.classList.remove('model__file__name--visible')
       modelFormats.querySelector('input[type=radio]').checked = true
     } catch (err) {
       console.error(err, err.data)
+      const errorMessage = err.data != null ? err.data.erro : 'Erro não informado.'
+      modalLoader.classList.remove('modal__loader--visible')
       modalIcon.innerHTML = '&xotime;'
       modalIcon.classList.add('modal__icon--fail')
-      modalMessage.innerText = 'ERRO: O arquivo enviado não está em conformidade com a especificação.'
+      modalMessage.innerText = `Oops! O seguinte erro ocorreu durante a requisição: ${errorMessage}`
       modal.classList.add('modal--raise')
     }
   })
@@ -99,15 +115,12 @@
       body: (data instanceof FormData) ? data : JSON.stringify(data),
       headers: (data instanceof FormData) ? {} : { 'Content-Type': 'application/json' }
     }).then(response => {
-      if (!response.ok) {
-        return response.json().then(errData => {
-          const error = new Error('Something went wrong...')
-          error.data = errData
-          throw error
-        })
-      }
-
-      return response.json()
+      if (response.ok) return response
+      return response.json().then(errData => {
+        const error = new Error('Something went wrong with your request. Check error data.')
+        error.data = errData
+        throw error
+      })
     })
   }
 })()
